@@ -32,6 +32,7 @@
             <ul class="nav-links" id="navLinks">
                 {% if current_user %}
                     <li><a href="{{ url_for('main.index') }}" class="nav-link">Dashboard</a></li>
+                    <li><a href="{{ url_for('documents.document_list') }}" class="nav-link">Documents</a></li>
                     
                     <li class="user-pill">
                         <span>{{ current_user.full_name }}</span>

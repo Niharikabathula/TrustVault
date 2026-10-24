@@ -47,11 +47,18 @@
         </div>
 
         <div class="card" style="margin: 0; background-color: var(--color-surface);">
-            <div style="font-size: 0.8125rem; color: var(--color-text-muted); font-weight: 600;">NEXT STEP</div>
+            <div style="font-size: 0.8125rem; color: var(--color-text-muted); font-weight: 600;">DOCUMENT VAULT</div>
             <div style="font-size: 1.125rem; font-weight: 700; color: var(--color-accent); margin-top: 0.25rem;">
-                Phase 3 Document Pipeline
+                <a href="{{ url_for('documents.document_list') }}" style="color: var(--color-accent);">Open Vault &rarr;</a>
             </div>
         </div>
+    </div>
+
+    <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('documents.document_list') }}" class="btn btn-primary">Browse Document Vault</a>
+        {% if user.is_owner %}
+            <a href="{{ url_for('documents.upload') }}" class="btn btn-outline">Upload New Document</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

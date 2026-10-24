@@ -127,3 +127,88 @@ class AuditService:
             resource_id=resource_id,
             details={"attempted_action": action, "reason": reason or "Unauthorized access attempt"},
         )
+
+    @classmethod
+    def log_doc_upload(cls, document: Any, user: User) -> AuditEvent:
+        return cls.log(
+            action=AuditAction.DOC_UPLOAD,
+            resource_type="DOCUMENT",
+            outcome=AuditOutcome.SUCCESS,
+            tenant_id=document.tenant_id,
+            actor=user,
+            resource_id=document.id,
+            details={
+                "title": document.title,
+                "category": document.category,
+                "original_filename": document.original_filename,
+                "file_size_bytes": document.file_size_bytes,
+                "mime_type": document.mime_type,
+                "sha256": document.sha256_checksum,
+            },
+        )
+
+    @classmethod
+    def log_doc_download(cls, document: Any, user: User) -> AuditEvent:
+        return cls.log(
+            action=AuditAction.DOC_DOWNLOAD,
+            resource_type="DOCUMENT",
+            outcome=AuditOutcome.SUCCESS,
+            tenant_id=document.tenant_id,
+            actor=user,
+            resource_id=document.id,
+            details={
+                "title": document.title,
+                "original_filename": document.original_filename,
+                "mime_type": document.mime_type,
+                "sha256": document.sha256_checksum,
+            },
+        )
+
+    @classmethod
+    def log_doc_share(cls, document: Any, actor: User, recipient: User) -> AuditEvent:
+        return cls.log(
+            action=AuditAction.DOC_SHARE,
+            resource_type="DOCUMENT",
+            outcome=AuditOutcome.SUCCESS,
+            tenant_id=document.tenant_id,
+            actor=actor,
+            resource_id=document.id,
+            details={
+                "document_title": document.title,
+                "recipient_id": recipient.id,
+                "recipient_email": recipient.email,
+                "recipient_role": recipient.role,
+            },
+        )
+
+    @classmethod
+    def log_doc_revoke(cls, document: Any, actor: User, target_user: User) -> AuditEvent:
+        return cls.log(
+            action=AuditAction.DOC_REVOKE,
+            resource_type="DOCUMENT",
+            outcome=AuditOutcome.SUCCESS,
+            tenant_id=document.tenant_id,
+            actor=actor,
+            resource_id=document.id,
+            details={
+                "document_title": document.title,
+                "target_user_id": target_user.id,
+                "target_user_email": target_user.email,
+            },
+        )
+
+    @classmethod
+    def log_doc_delete(cls, document: Any, user: User) -> AuditEvent:
+        return cls.log(
+            action=AuditAction.DOC_DELETE,
+            resource_type="DOCUMENT",
+            outcome=AuditOutcome.SUCCESS,
+            tenant_id=document.tenant_id,
+            actor=user,
+            resource_id=document.id,
+            details={
+                "title": document.title,
+                "category": document.category,
+                "original_filename": document.original_filename,
+            },
+        )

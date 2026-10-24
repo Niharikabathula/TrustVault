@@ -129,6 +129,17 @@ tests/test_auth.py::test_csrf_protection_enforced_when_enabled PASSED
 tests/test_auth.py::test_login_ip_rate_limiting_unknown_emails PASSED
 tests/test_auth.py::test_password_max_length_enforcement PASSED
 tests/test_auth.py::test_audit_nested_metadata_sanitization PASSED
+tests/test_documents.py::test_owner_upload_document_success PASSED
+tests/test_documents.py::test_upload_invalid_file_rejected PASSED
+tests/test_documents.py::test_non_owner_upload_blocked PASSED
+tests/test_documents.py::test_document_list_role_based_visibility PASSED
+tests/test_documents.py::test_document_sharing_and_viewer_download PASSED
+tests/test_documents.py::test_cross_tenant_sharing_prevented PASSED
+tests/test_documents.py::test_cross_tenant_access_and_download_opaque_404 PASSED
+tests/test_documents.py::test_admin_cannot_download_without_explicit_grant PASSED
+tests/test_documents.py::test_grant_revocation_immediate_cutoff PASSED
+tests/test_documents.py::test_owner_soft_delete_prevents_downloads PASSED
+tests/test_documents.py::test_storage_path_traversal_prevention PASSED
 tests/test_tenant_isolation.py::test_user_strict_single_tenant_membership PASSED
 tests/test_tenant_isolation.py::test_enforce_tenant_boundary_opaque_404 PASSED
 tests/test_tenant_isolation.py::test_manage_document_access_permissions PASSED
@@ -155,6 +166,9 @@ Key Highlights:
 - **Recursive Audit Sanitization**: Deeply nested metadata dictionaries and lists have sensitive keys (`password`, `token`, `secret`, `api_key`) automatically redacted.
 - **Opaque 404 Responses**: Unauthorized cross-tenant lookups return `404 Not Found` rather than `403 Forbidden` to prevent resource existence enumeration.
 - **Immediate Deactivation Revocation**: Deactivated accounts and deactivated organizations have active sessions terminated on their very next request.
+- **Defense-in-Depth Storage Pipeline**: Files are stored outside web roots under random UUID keys; validated via magic byte sniffing, OOXML structure verification, and polyglot script checks; downloads force attachment delivery with `X-Content-Type-Options: nosniff`.
+- **Admin Content Privacy**: Admins oversee document metadata and access management but cannot read or download document contents without an explicit grant or ownership.
+- **Instant Revocation & Owner Soft-Delete**: Revoking a grant immediately blocks downloads; soft-deleting an owned document preserves audit records while halting downloads.
 
 ---
 
