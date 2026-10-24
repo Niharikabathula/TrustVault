@@ -1,7 +1,7 @@
 import re
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, abort
-from trustvault.models import db, Tenant, User, UserRole, utc_now
+from trustvault.models import db, Tenant, User, UserRole, AuditAction, utc_now
 from trustvault.blueprints.auth.forms import LoginForm, TenantRegistrationForm, ChangePasswordForm
 from trustvault.services.authz import get_current_user, login_required
 from trustvault.services.audit_service import AuditService
@@ -24,7 +24,10 @@ def register_tenant():
     Public onboarding: Creates a brand-new Tenant and registers its first Admin.
     Users cannot use this route to join an existing tenant or self-assign roles.
     """
-    if get_current_user():
+    logged_user = get_current_user()
+    if logged_user:
+        if logged_user.must_change_password:
+            return redirect(url_for("auth.profile"))
         return redirect(url_for("main.index"))
 
     form = TenantRegistrationForm()
@@ -81,7 +84,10 @@ def login():
     Secure login with IP and account rate-limiting, generic error messages,
     and session fixation defense (session rotation).
     """
-    if get_current_user():
+    logged_user = get_current_user()
+    if logged_user:
+        if logged_user.must_change_password:
+            return redirect(url_for("auth.profile"))
         return redirect(url_for("main.index"))
 
     client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
@@ -148,6 +154,10 @@ def login():
 
         AuditService.log_login_success(user)
 
+        if user.must_change_password:
+            flash(f"Welcome back, {user.full_name}! You are using a temporary password. Please update your password to continue.", "warning")
+            return redirect(url_for("auth.profile"))
+
         flash(f"Welcome back, {user.full_name}!", "success")
         next_page = request.args.get("next")
         # Validate that redirect target is safe (relative URL only)
@@ -186,7 +196,7 @@ def profile():
         db.session.commit()
 
         AuditService.log(
-            action="USER_PASSWORD_CHANGE",
+            action=AuditAction.USER_PASSWORD_CHANGE,
             resource_type="USER",
             actor=user,
             resource_id=user.id,

@@ -115,8 +115,22 @@ Execute the automated pytest suite:
 python -m pytest tests/ -v
 ```
 
-All 21 Phase 2 security, isolation, and regression tests will execute:
+All 52 automated security, isolation, RBAC, and regression tests will execute:
 ```
+tests/test_admin.py::test_admin_can_provision_owner PASSED
+tests/test_admin.py::test_admin_can_provision_viewer PASSED
+tests/test_admin.py::test_non_admin_cannot_provision_users PASSED
+tests/test_admin.py::test_forged_admin_role_assignment_rejected PASSED
+tests/test_admin.py::test_provision_duplicate_email_handled_safely PASSED
+tests/test_admin.py::test_provisioned_user_belongs_strictly_to_admin_tenant PASSED
+tests/test_admin.py::test_admin_cannot_modify_another_tenant_user PASSED
+tests/test_admin.py::test_admin_cannot_deactivate_themselves PASSED
+tests/test_admin.py::test_admin_cannot_deactivate_another_admin PASSED
+tests/test_admin.py::test_deactivated_user_subsequent_requests_blocked PASSED
+tests/test_admin.py::test_admin_audit_viewer_only_returns_same_tenant_events PASSED
+tests/test_admin.py::test_non_admin_cannot_access_admin_routes PASSED
+tests/test_admin.py::test_admin_csrf_protection_enforced PASSED
+tests/test_admin.py::test_existing_document_permissions_still_work PASSED
 tests/test_auth.py::test_tenant_registration_success PASSED
 tests/test_auth.py::test_tenant_registration_honeypot_bot_rejection PASSED
 tests/test_auth.py::test_login_success_and_session_rotation PASSED
@@ -129,6 +143,12 @@ tests/test_auth.py::test_csrf_protection_enforced_when_enabled PASSED
 tests/test_auth.py::test_login_ip_rate_limiting_unknown_emails PASSED
 tests/test_auth.py::test_password_max_length_enforcement PASSED
 tests/test_auth.py::test_audit_nested_metadata_sanitization PASSED
+tests/test_auth.py::test_temporary_password_user_redirected_to_profile_on_login PASSED
+tests/test_auth.py::test_temporary_password_user_redirected_away_from_protected_pages PASSED
+tests/test_auth.py::test_temporary_password_user_can_access_profile_and_logout_without_loop PASSED
+tests/test_auth.py::test_incorrect_current_password_leaves_must_change_password_enabled PASSED
+tests/test_auth.py::test_successful_password_change_clears_must_change_password PASSED
+tests/test_auth.py::test_normal_user_unaffected_by_temporary_password_enforcement PASSED
 tests/test_documents.py::test_owner_upload_document_success PASSED
 tests/test_documents.py::test_upload_invalid_file_rejected PASSED
 tests/test_documents.py::test_non_owner_upload_blocked PASSED
@@ -153,11 +173,74 @@ tests/test_tenant_isolation.py::test_sqlite_foreign_key_enforcement PASSED
 
 ---
 
+## 7. Interactive Evaluation & Demo Walkthrough Guide
+
+To test the application end-to-end as an evaluator:
+
+### Step 1: Launch Application
+```bash
+python wsgi.py
+```
+Visit `http://127.0.0.1:5000` in your browser.
+
+### Step 2: Register Organization (Admin)
+1. Click **Create Vault** (`/auth/register-tenant`).
+2. Register **Acme Corporation** with Admin: `admin@acme.com` / `Password123!`.
+3. You will be redirected to the sign-in page. Sign in with these credentials.
+
+### Step 3: Provision Tenant Users (Phase 4 Admin Portal)
+1. Navigate to **User Management** in the navbar (`/admin/users`).
+2. Provision an **OWNER** account:
+   - Full Name: `Alice Owner`
+   - Email: `owner@acme.com`
+   - Role: `Owner`
+   - Initial Password: `Password123!`
+3. Provision a **VIEWER** account:
+   - Full Name: `Bob Viewer`
+   - Email: `viewer@acme.com`
+   - Role: `Viewer`
+   - Initial Password: `Password123!`
+
+### Step 4: Upload Document as Owner
+1. Sign out and sign in as `owner@acme.com` / `Password123!`.
+2. Navigate to **Documents** (`/documents/`) and click **Upload Document**.
+3. Fill in Title: *"Q3 Strategy Plan"*, Category: *"Confidential"*, and select a valid `.pdf` or `.docx` file.
+4. Click **Secure Upload**. Notice the document is listed under *My Documents*.
+
+### Step 5: Share Document with Viewer
+1. Click **Manage** on the uploaded document.
+2. Under **Manage Access & Permissions**, enter `viewer@acme.com` and click **Grant Access**.
+3. Notice that `Bob Viewer` now appears in the *Active Access Grants* table.
+
+### Step 6: Verify Viewer Access & Download
+1. Sign out and sign in as `viewer@acme.com` / `Password123!`.
+2. Notice that Viewer has no upload button. Under *Shared Documents*, *"Q3 Strategy Plan"* appears.
+3. Click **Download** — file downloads successfully with `X-Content-Type-Options: nosniff`.
+
+### Step 7: Verify Admin Content Download Block
+1. Sign out and sign in as `admin@acme.com` / `Password123!`.
+2. Navigate to **Documents** (`/documents/`). Admin sees the governance metadata (Title, Owner, Category, Size, SHA-256 hash).
+3. Click **Manage Access** on the document. Notice the download button is disabled with: *"Download Restricted (Admin Governance Only)"*.
+4. Directly requesting `/documents/<id>/download` returns **HTTP 403 Forbidden** and logs an `ACCESS_DENIED` audit event.
+
+### Step 8: Verify Immediate Revocation & Account Deactivation
+1. As Admin, revoke Bob Viewer's grant. Sign in as `viewer@acme.com` — download immediately fails with HTTP 403.
+2. As Admin, go to **User Management** (`/admin/users`) and click **Deactivate** for Bob Viewer.
+3. When Bob attempts to navigate any page, his session is immediately terminated and redirected to `/auth/login`.
+
+### Step 9: Inspect Forensic Audit Trail
+1. In the Admin navbar, click **Audit Logs** (`/admin/audit-logs`).
+2. Review the append-only logs recording `TENANT_ONBOARD`, `USER_CREATE`, `DOC_UPLOAD`, `DOC_SHARE`, `DOC_DOWNLOAD`, `DOC_REVOKE`, and `USER_STATUS_CHANGE`.
+3. Notice that all sensitive fields (passwords, tokens, file content) are recursively redacted.
+
+---
+
 ## 7. Security Architecture & Threat Mitigations
 
-See [THREATS.md](THREATS.md) for the detailed 15-threat analysis matrix covering STRIDE categories, mitigations, verification methods, and residual risks.
+See [THREATS.md](THREATS.md) for the detailed 16-threat analysis matrix covering STRIDE categories, mitigations, verification methods, and residual risks.
 
 Key Highlights:
+- **Central Temporary Password Enforcement**: Provisioned users with temporary credentials (`must_change_password=True`) are immediately intercepted and redirected to `/auth/profile`; application navigation links are suppressed until a verified password change is performed.
 - **Global Identity Uniqueness**: `User.email` is globally unique, eliminating multi-tenant login collision.
 - **Session Data Clearing**: `session.clear()` flushes untrusted pre-login attributes before issuing authenticated session cookies.
 - **Two-Tier Brute-Force Rate Limiting**: IP-based sliding window rate limiter protects against unknown-email spraying; 5 failed password attempts locks the user account for 15 minutes.

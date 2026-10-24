@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for, flash
 from trustvault.services.authz import get_current_user
 
 main_bp = Blueprint("main", __name__)
@@ -10,6 +10,9 @@ def index():
     user = get_current_user()
     if not user:
         return render_template("index.html")
+    if user.must_change_password:
+        flash("You must update your temporary password before accessing the dashboard.", "warning")
+        return redirect(url_for("auth.profile"))
     return render_template("dashboard.html", user=user, tenant=user.tenant)
 
 

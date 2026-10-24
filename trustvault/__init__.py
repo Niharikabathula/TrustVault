@@ -71,10 +71,12 @@ def create_app(config_name: str = "default") -> Flask:
     from trustvault.blueprints.auth import auth_bp
     from trustvault.blueprints.main import main_bp
     from trustvault.blueprints.documents import documents_bp
+    from trustvault.blueprints.admin import admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(documents_bp)
+    app.register_blueprint(admin_bp)
 
     # Custom Error Handlers
     @app.errorhandler(400)

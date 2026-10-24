@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}User Management{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-primary);">User & Role Management</h1>
+        <p style="font-size: 0.875rem; color: var(--color-text-muted);">
+            Manage authorized users and assign roles within <strong>{{ current_tenant.name }}</strong>
+        </p>
+    </div>
+
+    <div>
+        <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-outline">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.4rem;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            View Audit Logs
+        </a>
+    </div>
+</div>
+
+<!-- Provision New User Card -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h2 class="card-title">Provision New Organization Account</h2>
+        <p class="card-subtitle">
+            Securely onboard an employee into {{ current_tenant.name }}. Assigned roles are strictly enforced server-side.
+        </p>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.provision_user') }}" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="full_name" class="form-label">{{ form.full_name.label.text }} *</label>
+                {{ form.full_name(class="form-control", id="full_name") }}
+                {% for error in form.full_name.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="email" class="form-label">{{ form.email.label.text }} *</label>
+                {{ form.email(class="form-control", id="email") }}
+                {% for error in form.email.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="role" class="form-label">{{ form.role.label.text }} *</label>
+            {{ form.role(class="form-control", id="role") }}
+            <div class="form-help">
+                Admins may provision <strong>OWNER</strong> (upload, manage, and share documents) or <strong>VIEWER</strong> (read and download explicitly shared documents only).
+            </div>
+            {% for error in form.role.errors %}
+                <div class="form-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="password" class="form-label">{{ form.password.label.text }} *</label>
+                {{ form.password(class="form-control", id="password") }}
+                {% for error in form.password.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="confirm_password" class="form-label">{{ form.confirm_password.label.text }} *</label>
+                {{ form.confirm_password(class="form-control", id="confirm_password") }}
+                {% for error in form.confirm_password.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <span style="font-size: 0.8125rem; color: var(--color-text-muted);">
+                * All passwords must be between 8 and 128 characters. Credentials are hashed using salted cryptographic algorithms.
+            </span>
+            <button type="submit" class="btn btn-primary">Provision User</button>
+        </div>
+    </form>
+</div>
+
+<!-- Existing Users Table Card -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Organization Members ({{ users|length }})</h2>
+        <p class="card-subtitle">Active and deactivated accounts scoped strictly to {{ current_tenant.name }}</p>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Member</th>
+                    <th>Email</th>
+                    <th>Assigned Role</th>
+                    <th>Account Status</th>
+                    <th>Created</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                    <tr>
+                        <td><strong>{{ u.full_name }}</strong></td>
+                        <td><code>{{ u.email }}</code></td>
+                        <td>
+                            <span class="role-badge {{ u.role.lower() }}">{{ u.role }}</span>
+                        </td>
+                        <td>
+                            {% if u.is_active %}
+                                <span style="display: inline-block; padding: 0.15rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: var(--radius-sm); background-color: var(--color-success-bg); color: var(--color-success);">
+                                    Active
+                                </span>
+                            {% else %}
+                                <span style="display: inline-block; padding: 0.15rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: var(--radius-sm); background-color: var(--color-danger-bg); color: var(--color-danger);">
+                                    Deactivated
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            {% if u.id == admin.id %}
+                                <span style="font-size: 0.8125rem; color: var(--color-text-muted); font-style: italic;">
+                                    (Current Admin)
+                                </span>
+                            {% elif u.is_admin %}
+                                <span style="font-size: 0.8125rem; color: var(--color-text-muted); font-style: italic;">
+                                    (Protected Admin)
+                                </span>
+                            {% else %}
+                                <form action="{{ url_for('admin.toggle_user_status', user_id=u.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to {{ 'deactivate' if u.is_active else 'reactivate' }} this account?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    {% if u.is_active %}
+                                        <button type="submit" class="btn btn-outline btn-sm" style="color: var(--color-danger); border-color: var(--color-danger);">
+                                            Deactivate
+                                        </button>
+                                    {% else %}
+                                        <button type="submit" class="btn btn-outline btn-sm" style="color: var(--color-success); border-color: var(--color-success);">
+                                            Reactivate
+                                        </button>
+                                    {% endif %}
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -39,6 +39,12 @@ def login_required(f: Callable) -> Callable:
         if not user:
             flash("Please log in to access this page.", "warning")
             return redirect(url_for("auth.login", next=request.path))
+
+        # Central temporary password enforcement: block access until password is changed
+        if user.must_change_password and request.endpoint not in ("auth.profile", "auth.logout"):
+            flash("You must update your temporary password before accessing other features.", "warning")
+            return redirect(url_for("auth.profile"))
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -52,7 +58,12 @@ def require_role(*allowed_roles: str) -> Callable:
             if not user:
                 flash("Please log in to continue.", "warning")
                 return redirect(url_for("auth.login"))
-            
+
+            # Central temporary password enforcement: block access until password is changed
+            if user.must_change_password and request.endpoint not in ("auth.profile", "auth.logout"):
+                flash("You must update your temporary password before accessing other features.", "warning")
+                return redirect(url_for("auth.profile"))
+
             if user.role not in allowed_roles:
                 # Role not authorized: return 403 Forbidden
                 abort(403)

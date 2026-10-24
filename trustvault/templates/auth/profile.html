@@ -10,6 +10,12 @@
             <p class="card-subtitle">Account security & organization details</p>
         </div>
 
+        {% if user.must_change_password %}
+            <div class="alert alert-warning" style="margin-bottom: 1.5rem;">
+                <span><strong>Action Required:</strong> You are currently using a temporary password. Please update your password below to access the rest of TrustVault.</span>
+            </div>
+        {% endif %}
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
             <div>
                 <span class="form-label" style="color: var(--color-text-muted);">Full Name</span>

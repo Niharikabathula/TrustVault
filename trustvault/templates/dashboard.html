@@ -58,6 +58,9 @@
         <a href="{{ url_for('documents.document_list') }}" class="btn btn-primary">Browse Document Vault</a>
         {% if user.is_owner %}
             <a href="{{ url_for('documents.upload') }}" class="btn btn-outline">Upload New Document</a>
+        {% elif user.is_admin %}
+            <a href="{{ url_for('admin.users_list') }}" class="btn btn-outline">Manage Organization Users</a>
+            <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-outline">View Audit Logs</a>
         {% endif %}
     </div>
 </div>

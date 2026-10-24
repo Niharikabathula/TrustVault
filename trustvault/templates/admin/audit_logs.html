@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+    <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-primary);">Tenant Audit Event Trail</h1>
+        <p style="font-size: 0.875rem; color: var(--color-text-muted);">
+            Forensic compliance and security audit logs strictly scoped to <strong>{{ current_tenant.name }}</strong>
+        </p>
+    </div>
+
+    <div>
+        <a href="{{ url_for('admin.users_list') }}" class="btn btn-outline">
+            &larr; Back to User Management
+        </a>
+    </div>
+</div>
+
+<!-- Filter Toolbar Card -->
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+    <form method="GET" action="{{ url_for('admin.audit_logs') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+        <label for="action" style="font-size: 0.875rem; font-weight: 600; color: var(--color-text-main);">Filter by Action:</label>
+        <select name="action" id="action" class="form-control" style="width: auto; min-width: 220px; min-height: 40px;">
+            <option value="">All Security Events</option>
+            {% for act in distinct_actions %}
+                <option value="{{ act }}" {% if action_filter == act %}selected{% endif %}>{{ act }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline btn-sm">Apply Filter</button>
+        {% if action_filter %}
+            <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-outline btn-sm" style="color: var(--color-danger);">Reset Filter</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Audit Log Table Card -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+            <h2 class="card-title">Event Records (Showing Latest {{ logs|length }})</h2>
+            <p class="card-subtitle">All entries are timestamped in UTC and cryptographically bounded</p>
+        </div>
+        <span style="font-size: 0.75rem; background-color: var(--color-surface-hover); padding: 0.25rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--color-border);">
+            Append-Only Log
+        </span>
+    </div>
+
+    {% if logs %}
+        <div class="table-responsive">
+            <table class="table" style="font-size: 0.875rem;">
+                <thead>
+                    <tr>
+                        <th>Timestamp (UTC)</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Outcome</th>
+                        <th>Resource</th>
+                        <th>IP Address</th>
+                        <th>Sanitized Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in logs %}
+                        <tr>
+                            <td style="white-space: nowrap; color: var(--color-text-muted);">
+                                {{ event.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </td>
+                            <td>
+                                {% if event.actor_email %}
+                                    <strong>{{ event.actor_email }}</strong>
+                                    {% if event.actor_role %}
+                                        <div style="margin-top: 0.15rem;">
+                                            <span class="role-badge {{ event.actor_role.lower() }}" style="font-size: 0.65rem;">{{ event.actor_role }}</span>
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: var(--color-text-muted); font-style: italic;">Anonymous / System</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <code style="font-size: 0.8rem; font-weight: 600;">{{ event.action }}</code>
+                            </td>
+                            <td>
+                                {% if event.outcome == 'SUCCESS' %}
+                                    <span style="color: var(--color-success); font-weight: 600; font-size: 0.75rem;">SUCCESS</span>
+                                {% elif event.outcome == 'DENIED' %}
+                                    <span style="color: var(--color-warning); font-weight: 600; font-size: 0.75rem;">DENIED</span>
+                                {% else %}
+                                    <span style="color: var(--color-danger); font-weight: 600; font-size: 0.75rem;">FAILURE</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span>{{ event.resource_type }}</span>
+                                {% if event.resource_id %}
+                                    <div style="font-size: 0.7rem; color: var(--color-text-muted); font-family: monospace;">
+                                        {{ event.resource_id[:8] }}...
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <code style="font-size: 0.75rem;">{{ event.ip_address or '—' }}</code>
+                            </td>
+                            <td style="max-width: 280px; word-break: break-all;">
+                                {% set details = event.get_details() %}
+                                {% if details %}
+                                    <div style="font-size: 0.75rem; background-color: var(--color-surface-hover); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); font-family: monospace;">
+                                        {% for k, v in details.items() %}
+                                            <div><strong>{{ k }}:</strong> {{ v }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span style="color: var(--color-text-muted);">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p style="color: var(--color-text-muted); text-align: center; padding: 2rem 0;">
+            No audit events found matching the specified criteria.
+        </p>
+    {% endif %}
+</div>
+
+<!-- Immutability Security Guarantee Notice -->
+<div style="background-color: var(--color-surface-hover); padding: 1.25rem; border-radius: var(--radius-md); border-left: 4px solid var(--color-primary); font-size: 0.8125rem; color: var(--color-text-muted);">
+    <strong>Append-Only Security Architecture:</strong>
+    Audit event logs in TrustVault are strictly append-only. Application routes provide zero delete or edit endpoints.
+    All records are scoped exclusively to <strong>{{ current_tenant.name }}</strong>; administrators from other organizations
+    cannot view or enumerate this audit trail. Sensitive metadata fields (including passwords, tokens, and encryption keys)
+    are scrubbed recursively before serialization.
+</div>
+{% endblock %}

@@ -212,3 +212,36 @@ class AuditService:
                 "original_filename": document.original_filename,
             },
         )
+
+    @classmethod
+    def log_user_create(cls, admin: User, new_user: User) -> AuditEvent:
+        return cls.log(
+            action=AuditAction.USER_CREATE,
+            resource_type="USER",
+            outcome=AuditOutcome.SUCCESS,
+            tenant_id=admin.tenant_id,
+            actor=admin,
+            resource_id=new_user.id,
+            details={
+                "created_email": new_user.email,
+                "created_name": new_user.full_name,
+                "assigned_role": new_user.role,
+            },
+        )
+
+    @classmethod
+    def log_user_status_change(cls, admin: User, target_user: User, new_status: bool) -> AuditEvent:
+        status_str = "ACTIVATED" if new_status else "DEACTIVATED"
+        return cls.log(
+            action=AuditAction.USER_STATUS_CHANGE,
+            resource_type="USER",
+            outcome=AuditOutcome.SUCCESS,
+            tenant_id=admin.tenant_id,
+            actor=admin,
+            resource_id=target_user.id,
+            details={
+                "target_email": target_user.email,
+                "target_name": target_user.full_name,
+                "new_status": status_str,
+            },
+        )

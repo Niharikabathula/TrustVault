@@ -125,4 +125,87 @@
   - Full pytest test suite: **32 passed in 33.83s (100% pass rate, 0 failed, 0 skipped)** across `test_auth.py`, `test_documents.py`, and `test_tenant_isolation.py`.
 - **Git Status**:
   - Phase 2 commit `b831520` intact.
-  - Phase 3 files ready for review; no deployment, publishing, or push executed.
+  - Phase 3 committed as `f8e5e7b`.
+
+---
+
+### Record 5: Phase 4 Admin Portal, User Provisioning & Tenant Audit Trail Implementation
+- **Date**: 2026-10-24
+- **Prompt/Request**:
+  > Implement missing Admin functionality while preserving existing security architecture:
+  > 1. Tenant-scoped Admin user management: `GET /admin/users` (list users), `POST /admin/users/create` (provision OWNER or VIEWER only). Prevent Admin self-assignment and block unauthorized ADMIN creation. Enforce global email uniqueness and password constraints (8-128 chars). Never display password hashes or log credentials.
+  > 2. Account status management: `POST /admin/users/<id>/toggle-status` (activate/deactivate users in same tenant). Prevent self-deactivation and modifying other Admins. Immediate session invalidation via `get_current_user()`.
+  > 3. Audit log viewer: `GET /admin/audit-logs` strictly scoped to Admin's tenant. Useful fields: timestamp, actor, action, resource, sanitized details. Bounded query limit.
+  > 4. Navigation & Interface: Admin Portal links in base template, consistent Jinja2 templates (`users.html`, `audit_logs.html`).
+  > 5. Tests: `tests/test_admin.py` covering provisioning, non-admin blocks, forged ADMIN rejection, duplicate emails, tenant isolation, deactivation guards, audit viewer scoping, and CSRF enforcement.
+  > 6. Documentation: Update `README.md`, `THREATS.md`, and `PROMPTS.md`. Run full test suite.
+- **Tools Used**:
+  - `read_file`, `write_file`, `edit_file`, `run_command` (pytest test suite execution via PowerShell).
+- **Actual Result**:
+  - Created `admin` blueprint (`trustvault/blueprints/admin/`):
+    - `forms.py`: `UserProvisionForm` with server-side validation strictly permitting `OWNER` and `VIEWER` roles.
+    - `routes.py`:
+      - `GET /admin/users`: List tenant members with roles and activation status.
+      - `POST /admin/users/create`: Server-derived tenant user provisioning. Rejects forged `ADMIN` roles (`400`). Enforces email uniqueness and salted password hashing. Sets `must_change_password=True`.
+      - `POST /admin/users/<id>/toggle-status`: Scoped account activation/deactivation with self-deactivation and admin-protection guards.
+      - `GET /admin/audit-logs`: Append-only audit viewer strictly filtered by `tenant_id == admin.tenant_id`. Bounded to latest 100 events. Action filter dropdown.
+  - Updated `AuditService` with `log_user_create` and `log_user_status_change`.
+  - Created templates: `trustvault/templates/admin/users.html` and `trustvault/templates/admin/audit_logs.html`.
+  - Added "User Management" and "Audit Logs" navbar links in `base.html` and action buttons in `dashboard.html` visible only to `current_user.is_admin`.
+  - Created comprehensive test suite in `tests/test_admin.py` (14 automated tests).
+  - Updated `README.md` with full 46-test summary and interactive evaluation walkthrough script.
+  - Updated `THREATS.md` row `T-03` to reference privilege escalation tests.
+- **Verification Result**:
+  - Full pytest test suite: **46 passed in 51.02s (100% pass rate, 0 failed, 0 skipped)** across `test_admin.py`, `test_auth.py`, `test_documents.py`, and `test_tenant_isolation.py`.
+- **Git Status**:
+  - Phase 2 commit `b831520` and Phase 3 commit `f8e5e7b` intact.
+  - Working tree contains verified Phase 4 files ready for review; no commits, publishing, or deployment executed.
+
+---
+
+### Record 6: Central Temporary Password Enforcement & Password-Change Security Fix
+- **Date**: 2026-10-24
+- **Prompt/Request**:
+  > Fix TrustVault's temporary-password enforcement securely.
+  > Confirmed issue: Admin-created users have `must_change_password=True`, but `login_required()` and `require_role()` in `trustvault/services/authz.py` do not enforce it.
+  > Requirements:
+  > 1. Enforce the temporary-password requirement centrally so users with `must_change_password=True` cannot access normal protected application pages until they change their password.
+  > 2. Redirect these users to `auth.profile` and display a clear message.
+  > 3. Allow the profile/password-change page and secure logout to remain accessible to avoid redirect loops.
+  > 4. Preserve CSRF protection, authentication checks, role authorization, and tenant isolation.
+  > 5. Verify that a successful password change clears `must_change_password`, while an incorrect current password leaves it enabled.
+  > 6. Add regression tests proving a temporary-password user is redirected away from protected pages, can access the password-change page, and can access it after login without a redirect loop. Also test that normal users are unaffected.
+  > 7. Run `python -m pytest tests -v` and report actual results. Do not commit or publish changes.
+- **Tools Used**:
+  - `read_file`, `edit_file`, `run_command` (pytest test suite execution via PowerShell).
+- **Actual Result**:
+  - Updated `trustvault/services/authz.py`:
+    - In `login_required` and `require_role`, added centralized guard:
+      `if user.must_change_password and request.endpoint not in ("auth.profile", "auth.logout"):`
+      redirecting to `url_for("auth.profile")` with a clear warning notice.
+  - Updated `trustvault/blueprints/auth/routes.py`:
+    - In `login()`, added post-authentication check redirecting users with `must_change_password=True` directly to `url_for("auth.profile")`.
+    - Added redirect guard on authenticated visitors to `/auth/login` and `/auth/register-tenant`.
+    - In `profile()`, updated password change handler to use `AuditAction.USER_PASSWORD_CHANGE` and set `user.must_change_password = False` only upon verified current password.
+  - Updated `trustvault/blueprints/main/routes.py`:
+    - In `index()`, added guard redirecting temporary-password users away from the dashboard to `auth.profile`.
+  - Updated templates:
+    - `trustvault/templates/auth/profile.html`: Added prominent alert banner when `user.must_change_password` is True.
+    - `trustvault/templates/base.html`: Wrapped application navigation links (`Dashboard`, `Documents`, `User Management`, `Audit Logs`) in `{% if not current_user.must_change_password %}` so only `Profile` and `Sign Out` are presented until updated.
+  - Added 6 regression tests in `tests/test_auth.py`:
+    - `test_temporary_password_user_redirected_to_profile_on_login`
+    - `test_temporary_password_user_redirected_away_from_protected_pages`
+    - `test_temporary_password_user_can_access_profile_and_logout_without_loop`
+    - `test_incorrect_current_password_leaves_must_change_password_enabled`
+    - `test_successful_password_change_clears_must_change_password`
+    - `test_normal_user_unaffected_by_temporary_password_enforcement`
+- **Issue or Flaw Found During Verification**:
+  - In initial pytest run, 5 new tests failed:
+    1. Trailing slash redirection: accessing `/documents` produced HTTP 308 (permanent redirect to `/documents/`) rather than testing the decorated route handler. Fixed by targeting `/documents/`.
+    2. HTML tag separation: assertion searched for contiguous string without accounting for `<strong>` tags in the warning banner. Fixed by asserting on substring phrases.
+    3. `AuditAction` enum lacked `USER_PASSWORD_CHANGE`. Added `AuditAction.USER_PASSWORD_CHANGE = "USER_PASSWORD_CHANGE"` to model and route.
+  - After adjustments, all 52 tests passed.
+- **Verification Result**:
+  - Full pytest test suite: **52 passed in 55.93s (100% pass rate, 0 failed, 0 skipped)** across `test_admin.py`, `test_auth.py`, `test_documents.py`, and `test_tenant_isolation.py`.
+- **Git Status**:
+  - No commits created. All changes kept in working tree as instructed.
