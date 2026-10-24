@@ -12,7 +12,7 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "insecure-dev-fallback-key-do-not-use-in-production")
     
     # Database
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///instance/trustvault.db")
+    SQLALCHEMY_DATABASE_URI =os.getenv("DATABASE_URL","sqlite:///instance/trustvault.db").replace("postgresql://","postgresql+psycopg://", 1)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Storage settings
