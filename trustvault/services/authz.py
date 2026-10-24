@@ -1,7 +1,30 @@
 from functools import wraps
 from typing import Optional, List, Callable, Any
-from flask import session, redirect, url_for, request, abort, g, flash
+from flask import session, redirect, url_for, request, abort, g, flash, has_request_context, current_app
 from trustvault.models import db, User, Tenant, Document, DocumentAccessGrant, UserRole
+
+
+def get_client_ip() -> Optional[str]:
+    """
+    Safely extract the client IP address.
+
+    Security Boundary:
+    By default, uses direct request.remote_addr to prevent IP spoofing attacks via
+    unverified client-supplied headers (e.g. X-Forwarded-For).
+
+    Forwarded headers are evaluated ONLY if TRUST_PROXY_HEADERS is explicitly enabled
+    in the application configuration for trusted reverse-proxy deployments.
+    When enabled, the leftmost client IP from X-Forwarded-For is extracted.
+    """
+    if not has_request_context():
+        return None
+
+    if current_app and current_app.config.get("TRUST_PROXY_HEADERS"):
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+
+    return request.remote_addr
 
 
 def get_current_user() -> Optional[User]:

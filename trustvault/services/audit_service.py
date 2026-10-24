@@ -1,6 +1,7 @@
 from typing import Optional, Dict, Any
 from flask import request, has_request_context
 from trustvault.models import db, AuditEvent, AuditAction, AuditOutcome, User, Tenant
+from trustvault.services.authz import get_client_ip
 
 
 class AuditService:
@@ -24,9 +25,7 @@ class AuditService:
         user_agent = None
 
         if has_request_context():
-            ip_address = request.headers.get("X-Forwarded-For", request.remote_addr)
-            if ip_address and "," in ip_address:
-                ip_address = ip_address.split(",")[0].strip()
+            ip_address = get_client_ip()
             user_agent = request.user_agent.string[:255] if request.user_agent else None
 
         actor_id = actor.id if actor else None

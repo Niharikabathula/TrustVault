@@ -209,3 +209,46 @@
   - Full pytest test suite: **52 passed in 55.93s (100% pass rate, 0 failed, 0 skipped)** across `test_admin.py`, `test_auth.py`, `test_documents.py`, and `test_tenant_isolation.py`.
 - **Git Status**:
   - No commits created. All changes kept in working tree as instructed.
+
+---
+
+### Record 7: Phase 5 Security Hardening & Regression Testing
+- **Date**: 2026-10-24
+- **Prompt/Request**:
+  > Harden TrustVault security without unrelated refactoring or deployment:
+  > 1. Make client IP detection safe by default. Trust forwarded headers only through explicit configuration.
+  > 2. Fail closed in production if SECRET_KEY is missing, empty, or a known fallback.
+  > 3. Enable HSTS only when secure HTTPS configuration is enabled and the app is not in testing/debug mode.
+  > 4. Improve uploaded text-file signature/content inspection while keeping limitations explicit.
+  > 5. Add focused security regression tests.
+  > 6. Run the full test suite and inspect the Git diff. Do not publish or deploy.
+
+- **Tools Used**:
+  - Antigravity file inspection/editing and PowerShell commands.
+  - `python -m pytest tests -q`
+  - `git diff --check`
+  - `git status --short --branch`
+  - `git diff --stat`
+
+- **Actual Result**:
+  - Updated shared client IP detection to use `request.remote_addr` by default, with forwarded-header handling controlled by `TRUST_PROXY_HEADERS`.
+  - Added production secret validation for missing, empty, and known fallback secrets.
+  - Restricted HSTS activation to the configured secure, non-debug, non-testing environment.
+  - Improved text upload content inspection and separated forbidden signature checks from embedded content checks.
+  - Added focused regression tests.
+  - Reviewed the seven modified files and removed an accidental untracked file containing diff output.
+  - No unrelated files remain in the reported working tree.
+
+- **Issue or Flaw Found During Verification**:
+  - An accidental untracked file containing Git diff output was discovered during status inspection and removed.
+  - Text-content inspection may reject some benign documents containing HTML/script-like strings. This is a defensive heuristic, not antivirus or malware scanning.
+  - Forwarded client IP headers are safe to trust only when the deployment proxy strips or sanitizes untrusted incoming forwarded headers.
+
+- **Verification Result**:
+  - Full pytest suite: **59 passed in 37.45s**, with no reported test failures.
+  - `git diff --check`: no whitespace errors reported; line-ending warnings may appear.
+  - Seven modified tracked files were reported.
+  - Phase 5 remains uncommitted and has not been deployed or published.
+
+- **Commit Link**:
+  - Pending. Add the actual commit hash/link only after the reviewed changes are committed.

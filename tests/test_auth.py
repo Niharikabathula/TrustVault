@@ -479,3 +479,128 @@ def test_normal_user_unaffected_by_temporary_password_enforcement(client, users)
     # Accessing documents works directly
     doc_resp = client.get("/documents/")
     assert doc_resp.status_code == 200
+
+def test_client_ip_direct_remote_addr_by_default(app, client):
+    from trustvault.services.authz import get_client_ip
+    with app.test_request_context("/", environ_base={"REMOTE_ADDR": "192.0.2.1"}, headers={"X-Forwarded-For": "203.0.113.195"}):
+        assert app.config.get("TRUST_PROXY_HEADERS") is False
+        assert get_client_ip() == "192.0.2.1"
+
+
+def test_client_ip_trusted_proxy_headers_when_configured(app):
+    from trustvault.services.authz import get_client_ip
+    app.config["TRUST_PROXY_HEADERS"] = True
+    try:
+        with app.test_request_context("/", environ_base={"REMOTE_ADDR": "127.0.0.1"}, headers={"X-Forwarded-For": "203.0.113.195, 10.0.0.1"}):
+            assert get_client_ip() == "203.0.113.195"
+    finally:
+        app.config["TRUST_PROXY_HEADERS"] = False
+
+
+def test_audit_logging_uses_safe_client_ip(app, db_session, users):
+    from trustvault.services.audit_service import AuditService
+    admin = users["admin_a"]
+    with app.test_request_context("/", environ_base={"REMOTE_ADDR": "192.0.2.55"}, headers={"X-Forwarded-For": "198.51.100.99"}):
+        event = AuditService.log(action="SECURITY_TEST_AUDIT", resource_type="SYSTEM", actor=admin)
+        assert event.ip_address == "192.0.2.55"
+
+
+def test_production_refuses_to_start_with_missing_or_fallback_secret(monkeypatch):
+    from trustvault import create_app
+    monkeypatch.setenv("SECRET_KEY", "insecure-dev-fallback-key-do-not-use-in-production")
+    with pytest.raises(ValueError, match="CRITICAL SECURITY CONFIGURATION ERROR"):
+        create_app("production")
+
+    monkeypatch.setenv("SECRET_KEY", "")
+    with pytest.raises(ValueError, match="CRITICAL SECURITY CONFIGURATION ERROR"):
+        create_app("production")
+
+    monkeypatch.setenv("SECRET_KEY", "dev-secret-key-trustvault-local-development-only-replace-in-prod")
+    with pytest.raises(ValueError, match="CRITICAL SECURITY CONFIGURATION ERROR"):
+        create_app("production")
+
+    monkeypatch.setenv("SECRET_KEY", "b4cf88921e3a479b18d2f0997193b2a8c3d5e7146529ab81f72c3d4e5f607182")
+    prod_app = create_app("production")
+    assert prod_app.config["SECRET_KEY"] == "b4cf88921e3a479b18d2f0997193b2a8c3d5e7146529ab81f72c3d4e5f607182"
+    assert prod_app.config["TESTING"] is False
+    assert prod_app.config["SESSION_COOKIE_SECURE"] is True
+
+
+def test_hsts_header_present_only_in_secure_production(monkeypatch):
+    from trustvault import create_app
+    test_app = create_app("testing")
+    with test_app.test_client() as test_client:
+        resp = test_client.get("/health")
+        assert "Strict-Transport-Security" not in resp.headers
+
+    dev_app = create_app("development")
+    with dev_app.test_client() as dev_client:
+        resp = dev_client.get("/health")
+        assert "Strict-Transport-Security" not in resp.headers
+
+    monkeypatch.setenv("SECRET_KEY", "a93bc712f5d8e411b982c730e61fa5b4c2e1789d045a8b7c61f23e4d5c6b7a89")
+    prod_app = create_app("production")
+    with prod_app.test_client() as prod_client:
+        resp = prod_client.get("/health")
+        assert resp.headers.get("Strict-Transport-Security") == "max-age=31536000; includeSubDomains"
+
+
+def test_upload_text_file_embedded_script_rejected(client, users):
+    import io
+    client.post("/auth/logout")
+    client.post("/auth/login", data={"email": "owner@acme.com", "password": "Password123!"})
+
+    script_txt = io.BytesIO(b"Document Header Notes\n<script>alert(1)</script>\nFooter notes")
+    resp_script = client.post(
+        "/documents/upload",
+        data={
+            "title": "Embedded Script Notes",
+            "category": "Engineering",
+            "file": (script_txt, "notes.txt"),
+        },
+        content_type="multipart/form-data",
+    )
+    assert resp_script.status_code == 400
+    assert b"executable or script signatures" in resp_script.data
+
+    php_txt = io.BytesIO(b"Configuration Details:\n<?php system('cmd'); ?>\n")
+    resp_php = client.post(
+        "/documents/upload",
+        data={
+            "title": "Embedded PHP Notes",
+            "category": "Engineering",
+            "file": (php_txt, "config.txt"),
+        },
+        content_type="multipart/form-data",
+    )
+    assert resp_php.status_code == 400
+    assert b"executable or script signatures" in resp_php.data
+
+
+def test_upload_clean_text_file_accepted(client, users):
+    import io
+    from trustvault.models import Document
+
+    client.post("/auth/logout")
+    client.post("/auth/login", data={"email": "owner@acme.com", "password": "Password123!"})
+
+    clean_content = b"TrustVault Engineering Architecture\nSection 1: Security Boundaries\nAll data is isolated."
+    clean_txt = io.BytesIO(clean_content)
+    resp = client.post(
+        "/documents/upload",
+        data={
+            "title": "Clean Engineering Architecture",
+            "category": "Engineering",
+            "file": (clean_txt, "architecture.txt"),
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"uploaded successfully" in resp.data
+    assert b"Clean Engineering Architecture" in resp.data
+
+    doc = Document.query.filter_by(title="Clean Engineering Architecture").first()
+    assert doc is not None
+    assert doc.mime_type == "text/plain"
+    assert doc.file_size_bytes == len(clean_content)

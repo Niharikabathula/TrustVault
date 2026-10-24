@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, abort
 from trustvault.models import db, Tenant, User, UserRole, AuditAction, utc_now
 from trustvault.blueprints.auth.forms import LoginForm, TenantRegistrationForm, ChangePasswordForm
-from trustvault.services.authz import get_current_user, login_required
+from trustvault.services.authz import get_current_user, login_required, get_client_ip
 from trustvault.services.audit_service import AuditService
 from trustvault.services.rate_limiter import login_rate_limiter
 
@@ -90,9 +90,7 @@ def login():
             return redirect(url_for("auth.profile"))
         return redirect(url_for("main.index"))
 
-    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-    if client_ip and "," in client_ip:
-        client_ip = client_ip.split(",")[0].strip()
+    client_ip = get_client_ip()
 
     form = LoginForm()
 

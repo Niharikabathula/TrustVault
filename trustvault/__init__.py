@@ -29,6 +29,20 @@ def create_app(config_name: str = "default") -> Flask:
     config_obj = config_by_name.get(config_name, config_by_name["default"])
     app.config.from_object(config_obj)
 
+    # Allow runtime os.environ["SECRET_KEY"] to take precedence over import-time cached class attributes
+    if "SECRET_KEY" in os.environ:
+        app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
+
+    # Fail-closed secret validation: production must refuse to start if SECRET_KEY is missing, empty, or fallback
+    from trustvault.config import ProductionConfig
+    if config_name == "production" or (isinstance(config_obj, type) and issubclass(config_obj, ProductionConfig)):
+        secret_key = app.config.get("SECRET_KEY")
+        if not secret_key or not str(secret_key).strip() or secret_key in ProductionConfig.INSECURE_FALLBACK_KEYS:
+            raise ValueError(
+                "CRITICAL SECURITY CONFIGURATION ERROR: Production environment cannot start with a missing, "
+                "empty, or known insecure fallback SECRET_KEY. Please set a strong, random SECRET_KEY in your environment."
+            )
+
     # Initialize extensions
     db.init_app(app)
     csrf.init_app(app)
@@ -55,6 +69,11 @@ def create_app(config_name: str = "default") -> Flask:
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
         
+        # HTTP Strict Transport Security (HSTS):
+        # Enabled strictly for secure HTTPS deployments (never in local development or testing)
+        if app.config.get("HSTS_ENABLED") and app.config.get("SESSION_COOKIE_SECURE") and not app.config.get("TESTING") and not app.config.get("DEBUG"):
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
         # Production Content Security Policy
         if not app.config.get("TESTING"):
             response.headers["Content-Security-Policy"] = (

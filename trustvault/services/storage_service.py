@@ -57,16 +57,23 @@ class StorageService:
         "xlsx": [b"PK\x03\x04"],
     }
 
-    DISALLOWED_SCRIPT_SIGNATURES = [
+    DISALLOWED_HEADER_SIGNATURES = [
         b"MZ",            # DOS/Windows PE Executable
         b"\x7fELF",       # Linux Executable
         b"#!",            # Unix shell script
-        b"<?php",         # PHP script
-        b"<?",            # Short PHP / XML execution
-        b"<script",       # HTML/JavaScript script
-        b"<html",         # Full HTML payload
-        b"<% ",           # ASP/JSP tag
+        b"<?",            # Short PHP / XML execution at file start
     ]
+
+    DISALLOWED_EMBEDDED_SIGNATURES = [
+        b"<?php",         # PHP script anywhere in file
+        b"<script",       # HTML/JavaScript execution anywhere in file
+        b"<html",         # Full HTML markup anywhere in file
+        b"<% ",           # ASP/JSP server script tag
+        b"<svg",          # SVG vector execution tag
+    ]
+
+    # Combined list for backwards compatibility
+    DISALLOWED_SCRIPT_SIGNATURES = DISALLOWED_HEADER_SIGNATURES + DISALLOWED_EMBEDDED_SIGNATURES
 
     @classmethod
     def get_extension(cls, filename: str) -> str:
@@ -130,15 +137,27 @@ class StorageService:
 
     @classmethod
     def _validate_text_content(cls, content: bytes) -> None:
-        """Verify text file is valid UTF-8/ASCII without embedded executable payloads or null bytes."""
+        """
+        Verify text file is valid UTF-8/ASCII without embedded executable payloads or null bytes.
+
+        NOTE ON SECURITY HONESTY:
+        These heuristic signature checks detect common script tags and executable headers
+        disguised as text. They DO NOT replace a dedicated antivirus, sandbox, or ICAP scanner.
+        """
         # Check for null bytes (common in binary files pretending to be text)
         if b"\x00" in content:
             raise ValidationError("Text files cannot contain binary null bytes.")
 
-        # Check for executable or script headers
+        # Check for executable or script headers at the beginning
         content_stripped = content.lstrip()
-        for bad_sig in cls.DISALLOWED_SCRIPT_SIGNATURES:
+        for bad_sig in cls.DISALLOWED_HEADER_SIGNATURES:
             if content_stripped.lower().startswith(bad_sig.lower()):
+                raise ValidationError("File content contains executable or script signatures.")
+
+        # Check for embedded script / web execution tags throughout the entire file
+        content_lower = content.lower()
+        for bad_sig in cls.DISALLOWED_EMBEDDED_SIGNATURES:
+            if bad_sig.lower() in content_lower:
                 raise ValidationError("File content contains executable or script signatures.")
 
         # Validate character encoding
