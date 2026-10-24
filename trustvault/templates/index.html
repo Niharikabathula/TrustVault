@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Secure Enterprise Document Sharing{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align: center; padding: 3.5rem 1.5rem; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
+    <div style="max-width: 720px; margin: 0 auto;">
+        <span class="role-badge" style="background-color: var(--color-accent); margin-bottom: 1rem; display: inline-block;">Snovasys Fresher Challenge 2026</span>
+        <h1 style="font-size: 2.25rem; font-weight: 800; color: var(--color-primary); line-height: 1.2; margin-bottom: 1rem;">
+            Confidential Document Sharing with Complete Accountability
+        </h1>
+        <p style="font-size: 1.125rem; color: var(--color-text-muted); margin-bottom: 2rem;">
+            TrustVault isolates enterprise tenant data with cryptographic boundaries, role-based access control, dynamic authorization, and tamper-resistant audit trails.
+        </p>
+
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary" style="padding: 0.75rem 2rem;">Sign In to Your Vault</a>
+            <a href="{{ url_for('auth.register_tenant') }}" class="btn btn-outline" style="padding: 0.75rem 2rem;">Register New Company</a>
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+    <div class="card">
+        <h3 class="card-title" style="margin-bottom: 0.5rem; color: var(--color-primary);">🏢 Strict Multi-Tenancy</h3>
+        <p style="color: var(--color-text-muted); font-size: 0.9375rem;">
+            Organizations are cryptographically and logically isolated. Company A users can never view, download, or discover Company B documents.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title" style="margin-bottom: 0.5rem; color: var(--color-primary);">🛡️ Role-Based Access</h3>
+        <p style="color: var(--color-text-muted); font-size: 0.9375rem;">
+            Strict enforcement for ADMIN, OWNER, and VIEWER roles. Admins manage users, Owners control document access, and Viewers access only what is shared.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title" style="margin-bottom: 0.5rem; color: var(--color-primary);">📜 Forensic Audit Logging</h3>
+        <p style="color: var(--color-text-muted); font-size: 0.9375rem;">
+            Every login, upload, share, revocation, download, and denied access attempt is captured in an append-only audit stream.
+        </p>
+    </div>
+</div>
+{% endblock %}

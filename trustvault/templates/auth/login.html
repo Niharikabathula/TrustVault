@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="card auth-card">
+        <div class="auth-header">
+            <h1>Sign In to TrustVault</h1>
+            <p>Enter your corporate credentials</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}" novalidate>
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                <label for="email" class="form-label">{{ form.email.label.text }}</label>
+                {{ form.email(class="form-control", id="email") }}
+                {% for error in form.email.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">{{ form.password.label.text }}</label>
+                {{ form.password(class="form-control", id="password") }}
+                {% for error in form.password.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                {{ form.submit(class="btn btn-primary", style="width: 100%;") }}
+            </div>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.5rem; font-size: 0.875rem; color: var(--color-text-muted);">
+            Need a secure vault for your company?
+            <a href="{{ url_for('auth.register_tenant') }}">Register Organization</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

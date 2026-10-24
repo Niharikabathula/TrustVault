@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 class="card-title">{{ tenant.name }} Dashboard</h1>
+            <p class="card-subtitle">Active Tenant Context: <code>{{ tenant.slug }}</code> (ID: <code>{{ tenant.id }}</code>)</p>
+        </div>
+        <span class="role-badge {{ user.role.lower() }}" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;">
+            {{ user.role }} ROLE
+        </span>
+    </div>
+
+    <div style="background-color: var(--color-surface-hover); padding: 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1rem; font-weight: 600; color: var(--color-primary); margin-bottom: 0.5rem;">
+            ✅ Phase 2 Security Foundation Active
+        </h3>
+        <p style="font-size: 0.875rem; color: var(--color-text-muted);">
+            Logged in as <strong>{{ user.full_name }}</strong> (<code>{{ user.email }}</code>).
+            Your session is cryptographically bound to <strong>{{ tenant.name }}</strong> on the server.
+            The browser never dictates tenant authorization.
+        </p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <div class="card" style="margin: 0; background-color: var(--color-surface);">
+            <div style="font-size: 0.8125rem; color: var(--color-text-muted); font-weight: 600;">ROLE CAPABILITY</div>
+            <div style="font-size: 1.125rem; font-weight: 700; color: var(--color-primary); margin-top: 0.25rem;">
+                {% if user.is_admin %}
+                    Tenant & User Administration
+                {% elif user.is_owner %}
+                    Document Upload & Sharing
+                {% else %}
+                    Shared Document Viewing
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card" style="margin: 0; background-color: var(--color-surface);">
+            <div style="font-size: 0.8125rem; color: var(--color-text-muted); font-weight: 600;">AUTHENTICATION STATUS</div>
+            <div style="font-size: 1.125rem; font-weight: 700; color: var(--color-success); margin-top: 0.25rem;">
+                Session Active & Rotated
+            </div>
+        </div>
+
+        <div class="card" style="margin: 0; background-color: var(--color-surface);">
+            <div style="font-size: 0.8125rem; color: var(--color-text-muted); font-weight: 600;">NEXT STEP</div>
+            <div style="font-size: 1.125rem; font-weight: 700; color: var(--color-accent); margin-top: 0.25rem;">
+                Phase 3 Document Pipeline
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

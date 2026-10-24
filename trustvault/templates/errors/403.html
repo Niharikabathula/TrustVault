@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}403 - Access Denied{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align: center; max-width: 540px; margin: 3rem auto; padding: 3rem 1.5rem;">
+    <h1 style="font-size: 3rem; font-weight: 800; color: var(--color-danger);">403</h1>
+    <h2 class="card-title" style="margin: 0.5rem 0 1rem;">Access Forbidden</h2>
+    <p style="color: var(--color-text-muted); margin-bottom: 2rem;">
+        You do not have the required role or authorization to access this resource. This event has been recorded in the security audit log.
+    </p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-primary">Return to Dashboard</a>
+</div>
+{% endblock %}

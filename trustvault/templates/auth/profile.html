@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">User Profile</h1>
+            <p class="card-subtitle">Account security & organization details</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+            <div>
+                <span class="form-label" style="color: var(--color-text-muted);">Full Name</span>
+                <strong>{{ user.full_name }}</strong>
+            </div>
+            <div>
+                <span class="form-label" style="color: var(--color-text-muted);">Email Address</span>
+                <code>{{ user.email }}</code>
+            </div>
+            <div>
+                <span class="form-label" style="color: var(--color-text-muted);">Organization (Tenant)</span>
+                <strong>{{ user.tenant.name }}</strong>
+            </div>
+            <div>
+                <span class="form-label" style="color: var(--color-text-muted);">Assigned Role</span>
+                <span class="role-badge {{ user.role.lower() }}">{{ user.role }}</span>
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--color-border); margin: 1.5rem 0;">
+
+        <h2 style="font-size: 1.125rem; font-weight: 600; color: var(--color-primary); margin-bottom: 1rem;">
+            Update Password
+        </h2>
+
+        <form method="POST" action="{{ url_for('auth.profile') }}" novalidate>
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                <label for="current_password" class="form-label">{{ form.current_password.label.text }}</label>
+                {{ form.current_password(class="form-control", id="current_password") }}
+                {% for error in form.current_password.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="new_password" class="form-label">{{ form.new_password.label.text }}</label>
+                {{ form.new_password(class="form-control", id="new_password") }}
+                {% for error in form.new_password.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password" class="form-label">{{ form.confirm_password.label.text }}</label>
+                {{ form.confirm_password(class="form-control", id="confirm_password") }}
+                {% for error in form.confirm_password.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Register Organization{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="card auth-card" style="max-width: 520px;">
+        <div class="auth-header">
+            <h1>Create Organization Vault</h1>
+            <p>Establish a cryptographically isolated tenant and master administrator account.</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.register_tenant') }}" novalidate>
+            {{ form.hidden_tag() }}
+
+            {% if form.website.errors %}
+                {% for error in form.website.errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="form-group">
+                <label for="company_name" class="form-label">{{ form.company_name.label.text }}</label>
+                {{ form.company_name(class="form-control", id="company_name") }}
+                {% for error in form.company_name.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="full_name" class="form-label">{{ form.full_name.label.text }}</label>
+                {{ form.full_name(class="form-control", id="full_name") }}
+                {% for error in form.full_name.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="admin_email" class="form-label">{{ form.admin_email.label.text }}</label>
+                {{ form.admin_email(class="form-control", id="admin_email") }}
+                <div class="form-help">This user will become the initial Tenant ADMIN.</div>
+                {% for error in form.admin_email.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">{{ form.password.label.text }}</label>
+                {{ form.password(class="form-control", id="password") }}
+                <div class="form-help">Must be at least 8 characters long.</div>
+                {% for error in form.password.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password" class="form-label">{{ form.confirm_password.label.text }}</label>
+                {{ form.confirm_password(class="form-control", id="confirm_password") }}
+                {% for error in form.confirm_password.errors %}
+                    <div class="form-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                {{ form.submit(class="btn btn-primary", style="width: 100%;") }}
+            </div>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.5rem; font-size: 0.875rem; color: var(--color-text-muted);">
+            Already have an organization vault?
+            <a href="{{ url_for('auth.login') }}">Sign In</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
